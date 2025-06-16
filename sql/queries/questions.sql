@@ -8,3 +8,4 @@ LIMIT 1;
 -- name: GetQuestionByID :one
 SELECT content FROM questions
 WHERE id = $1;
+

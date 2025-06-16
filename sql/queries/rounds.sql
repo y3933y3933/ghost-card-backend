@@ -11,7 +11,6 @@ LIMIT 1;
 
 
 
-
 -- name: CreateRound :one
 INSERT INTO rounds (game_id, question_id, current_player_id, status)
 VALUES ($1, $2, $3, 'pending')
@@ -24,3 +23,10 @@ SELECT * FROM rounds WHERE id = $1;
 
 -- name: UpdateRoundStatus :exec
 UPDATE rounds SET is_joker = $2, status = $3 WHERE id = $1;
+
+
+-- name: GetLatestRoundInGame :one
+SELECT * FROM rounds
+WHERE game_id = $1
+ORDER BY id DESC
+LIMIT 1;

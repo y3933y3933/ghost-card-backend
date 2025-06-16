@@ -226,3 +226,79 @@ func (h *RoundsHandler) DrawCard(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 }
+
+func (h *RoundsHandler) CreateNextRound(c *gin.Context) {
+	ctx := c.Request.Context()
+	gameCode := c.Param("code")
+
+	game, err := h.queries.GetGameByCode(ctx, gameCode)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+			return
+		}
+		InternalServerError(c, "db error")
+		return
+	}
+
+	players, err := h.queries.ListPlayersByGameCode(ctx, game.Code)
+	if err != nil || len(players) == 0 {
+		InternalServerError(c, "failed to get players")
+		return
+	}
+
+	lastRound, err := h.queries.GetLatestRoundInGame(ctx, game.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		InternalServerError(c, "failed to get last round")
+		return
+	}
+
+	// 決定下一位玩家
+	nextPlayerID := players[0].ID
+	if lastRound.ID != 0 {
+		for i, p := range players {
+			if p.ID == lastRound.CurrentPlayerID {
+				nextPlayerID = players[(i+1)%len(players)].ID
+				break
+			}
+		}
+	}
+
+	question, err := h.queries.GetRandomQuestionByLevel(ctx, game.Level)
+	if err != nil {
+		InternalServerError(c, "failed to get question")
+		return
+	}
+
+	round, err := h.queries.CreateRound(ctx, database.CreateRoundParams{
+		GameID:          game.ID,
+		QuestionID:      question.ID,
+		CurrentPlayerID: nextPlayerID,
+	})
+	if err != nil {
+		InternalServerError(c, "failed to create round")
+		return
+	}
+
+	// 廣播回合開始（不含題目）
+	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
+		Type: "round_started",
+		Data: gin.H{
+			"round_id":  round.ID,
+			"player_id": nextPlayerID,
+		},
+	})
+
+	// 私訊題目給當事人
+	h.hub.SendToPlayer(game.Code, nextPlayerID, ws.WebSocketMessage{
+		Type: "round_question",
+		Data: gin.H{
+			"question": question.Content,
+		},
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"round_id":  round.ID,
+		"player_id": nextPlayerID,
+	})
+}

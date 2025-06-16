@@ -13,3 +13,5 @@ SELECT COUNT(*) FROM players WHERE game_id = $1;
 INSERT INTO players(game_id, nickname, is_host)
 VALUES ($1, $2, $3)
 RETURNING id, nickname, is_host, joined_at;
+
+

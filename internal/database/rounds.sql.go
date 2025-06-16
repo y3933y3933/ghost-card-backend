@@ -85,6 +85,28 @@ func (q *Queries) GetCurrentRoundByGameCode(ctx context.Context, code string) (G
 	return i, err
 }
 
+const getLatestRoundInGame = `-- name: GetLatestRoundInGame :one
+SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at FROM rounds
+WHERE game_id = $1
+ORDER BY id DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestRoundInGame(ctx context.Context, gameID int64) (Round, error) {
+	row := q.db.QueryRow(ctx, getLatestRoundInGame, gameID)
+	var i Round
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.QuestionID,
+		&i.CurrentPlayerID,
+		&i.IsJoker,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getRoundByID = `-- name: GetRoundByID :one
 SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at FROM rounds WHERE id = $1
 `
