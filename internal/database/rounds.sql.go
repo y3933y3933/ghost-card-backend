@@ -136,29 +136,19 @@ func (q *Queries) ListRoundsByGame(ctx context.Context, gameID int64) ([]Round, 
 	return items, nil
 }
 
-const markRoundAsJoker = `-- name: MarkRoundAsJoker :exec
+const revealRound = `-- name: RevealRound :exec
 UPDATE rounds
-SET is_joker = TRUE, status = 'revealed'
+SET is_joker = $2,
+    status = 'revealed'
 WHERE id = $1
 `
 
-func (q *Queries) MarkRoundAsJoker(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, markRoundAsJoker, id)
-	return err
+type RevealRoundParams struct {
+	ID      int64
+	IsJoker pgtype.Bool
 }
 
-const updateRoundStatus = `-- name: UpdateRoundStatus :exec
-UPDATE rounds
-SET status = $2
-WHERE id = $1
-`
-
-type UpdateRoundStatusParams struct {
-	ID     int64
-	Status string
-}
-
-func (q *Queries) UpdateRoundStatus(ctx context.Context, arg UpdateRoundStatusParams) error {
-	_, err := q.db.Exec(ctx, updateRoundStatus, arg.ID, arg.Status)
+func (q *Queries) RevealRound(ctx context.Context, arg RevealRoundParams) error {
+	_, err := q.db.Exec(ctx, revealRound, arg.ID, arg.IsJoker)
 	return err
 }

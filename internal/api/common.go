@@ -22,3 +22,8 @@ func NotFound(c *gin.Context, msg string) {
 func FailedValidation(c *gin.Context, details any) {
 	c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Validation failed", "details": details})
 }
+
+func Forbidden(c *gin.Context, msg string) {
+	c.JSON(http.StatusForbidden, gin.H{"error": msg})
+
+}

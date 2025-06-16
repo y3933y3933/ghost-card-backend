@@ -15,14 +15,10 @@ SELECT * FROM rounds
 WHERE game_id = $1
 ORDER BY created_at ASC;
 
--- name: UpdateRoundStatus :exec
+-- name: RevealRound :exec
 UPDATE rounds
-SET status = $2
-WHERE id = $1;
-
--- name: MarkRoundAsJoker :exec
-UPDATE rounds
-SET is_joker = TRUE, status = 'revealed'
+SET is_joker = $2,
+    status = 'revealed'
 WHERE id = $1;
 
 -- name: DeleteRoundsByGame :exec

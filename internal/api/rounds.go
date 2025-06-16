@@ -6,7 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 
+	"math/rand"
+
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/y3933y3933/ghost-card/internal/database"
 )
 
@@ -84,4 +88,72 @@ func (h *RoundsHandler) CreateRoundInOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, round)
+}
+
+func (h *RoundsHandler) DrawCard(c *gin.Context) {
+	ctx := c.Request.Context()
+	code := c.Param("code")
+
+	var req struct {
+		PlayerID int64 `json:"player_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			FailedValidation(c, ve.Error())
+		} else {
+			BadRequest(c, "Invalid request format")
+		}
+		return
+	}
+
+	game, err := h.queries.GetGameByCode(ctx, code)
+	if err != nil {
+		h.logger.Error("get game by code error: ", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+		} else {
+			InternalServerError(c, "DB error")
+		}
+		return
+	}
+
+	round, err := h.queries.GetLatestRoundByGameID(ctx, game.ID)
+	if err != nil {
+		NotFound(c, "no current round")
+		return
+	}
+
+	if round.CurrentPlayerID != req.PlayerID {
+		Forbidden(c, "not your turn")
+		return
+	}
+
+	if round.Status != "pending" {
+		BadRequest(c, "round already resolved")
+		return
+	}
+
+	isJoker := rand.Intn(3) == 0
+
+	err = h.queries.RevealRound(ctx, database.RevealRoundParams{
+		ID: round.ID,
+		IsJoker: pgtype.Bool{
+			Bool:  isJoker,
+			Valid: true,
+		},
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reveal round"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"is_joker":    isJoker,
+		"question":    round.QuestionID,
+		"next_action": "next_round",
+	})
+
 }
