@@ -1,3 +1,5 @@
+include .envrc
+
 MIGRATION_NAME =
 
 .PHONY: run
@@ -15,3 +17,11 @@ migrate/create:
 		exit 1; \
 	fi
 	goose -dir ./migrations -s create $(MIGRATION_NAME) sql
+
+.PHONY: migrate/up
+migrate/up:
+	@if [ -z "$(DB_URL)" ]; then \
+		echo "Error: DB_URL is required."; \
+		exit 1; \
+	fi
+	goose -dir ./migrations postgres $(DB_URL) up 
