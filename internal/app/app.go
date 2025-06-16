@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/y3933y3933/ghost-card/internal/api"
 	"github.com/y3933y3933/ghost-card/internal/database"
+	"github.com/y3933y3933/ghost-card/internal/ws"
 )
 
 type config struct {
@@ -27,6 +28,7 @@ type Application struct {
 	GamesHandler   *api.GamesHandler
 	PlayersHandler *api.PlayersHandler
 	RoundsHandler  *api.RoundsHandler
+	WSHub          *ws.Hub
 }
 
 func NewApplication() (*Application, error) {
@@ -54,6 +56,9 @@ func NewApplication() (*Application, error) {
 
 	queries := database.New(dbpool)
 
+	hub := ws.NewHub()
+	go hub.Run()
+
 	// handler
 	gamesHandler := api.NewGamesHandler(queries, logger)
 	playersHandler := api.NewPlayersHandler(queries, logger)
@@ -67,6 +72,7 @@ func NewApplication() (*Application, error) {
 		GamesHandler:   gamesHandler,
 		PlayersHandler: playersHandler,
 		RoundsHandler:  roundsHandler,
+		WSHub:          hub,
 	}
 
 	return app, nil
