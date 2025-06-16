@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/y3933y3933/ghost-card/internal/api"
 	"github.com/y3933y3933/ghost-card/internal/database"
 )
 
@@ -19,10 +20,11 @@ type config struct {
 }
 
 type Application struct {
-	Logger    *slog.Logger
-	DBQueries *database.Queries
-	DB        *pgxpool.Pool
-	Config    config
+	Logger      *slog.Logger
+	DBQueries   *database.Queries
+	DB          *pgxpool.Pool
+	Config      config
+	GameHandler *api.GamesHandler
 }
 
 func NewApplication() (*Application, error) {
@@ -50,11 +52,15 @@ func NewApplication() (*Application, error) {
 
 	queries := database.New(dbpool)
 
+	// handler
+	gamesHandler := api.NewGamesHandler(queries, logger)
+
 	app := &Application{
-		Logger:    logger,
-		DB:        dbpool,
-		DBQueries: queries,
-		Config:    cfg,
+		Logger:      logger,
+		DB:          dbpool,
+		DBQueries:   queries,
+		Config:      cfg,
+		GameHandler: gamesHandler,
 	}
 
 	return app, nil

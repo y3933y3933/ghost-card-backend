@@ -10,5 +10,11 @@ func SetRoutes(app *app.Application) *gin.Engine {
 
 	router.GET("/healthz", app.HealthCheck)
 
+	// games
+	games := router.Group("/games")
+	{
+		games.POST("/", app.GameHandler.CreateGame)
+	}
+
 	return router
 }
