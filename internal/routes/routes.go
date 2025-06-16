@@ -2,8 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/y3933y3933/ghost-card/internal/app"
-	"github.com/y3933y3933/ghost-card/internal/ws"
+	"github.com/y3933y3933/joker/internal/app"
+	"github.com/y3933y3933/joker/internal/ws"
 )
 
 func SetRoutes(app *app.Application) *gin.Engine {

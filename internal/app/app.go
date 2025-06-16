@@ -9,9 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/y3933y3933/ghost-card/internal/api"
-	"github.com/y3933y3933/ghost-card/internal/database"
-	"github.com/y3933y3933/ghost-card/internal/ws"
+	"github.com/y3933y3933/joker/internal/api"
+	"github.com/y3933y3933/joker/internal/database"
+	"github.com/y3933y3933/joker/internal/ws"
 )
 
 type config struct {

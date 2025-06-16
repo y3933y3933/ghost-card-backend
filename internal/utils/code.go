@@ -7,7 +7,7 @@ import (
 
 	"math/rand"
 
-	"github.com/y3933y3933/ghost-card/internal/database"
+	"github.com/y3933y3933/joker/internal/database"
 )
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

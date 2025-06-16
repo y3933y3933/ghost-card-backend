@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/y3933y3933/ghost-card/internal/app"
-	"github.com/y3933y3933/ghost-card/internal/routes"
+	"github.com/y3933y3933/joker/internal/app"
+	"github.com/y3933y3933/joker/internal/routes"
 )
 
 func main() {

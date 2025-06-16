@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/y3933y3933/ghost-card/internal/database"
-	"github.com/y3933y3933/ghost-card/internal/utils"
+	"github.com/y3933y3933/joker/internal/database"
+	"github.com/y3933y3933/joker/internal/utils"
 )
 
 type GamesHandler struct {

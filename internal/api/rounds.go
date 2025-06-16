@@ -10,9 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/y3933y3933/ghost-card/internal/database"
-	"github.com/y3933y3933/ghost-card/internal/utils"
-	"github.com/y3933y3933/ghost-card/internal/ws"
+	"github.com/y3933y3933/joker/internal/database"
+	"github.com/y3933y3933/joker/internal/utils"
+	"github.com/y3933y3933/joker/internal/ws"
 )
 
 type RoundsHandler struct {
