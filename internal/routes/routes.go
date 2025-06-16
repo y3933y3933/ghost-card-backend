@@ -8,12 +8,13 @@ import (
 func SetRoutes(app *app.Application) *gin.Engine {
 	router := gin.Default()
 
-	router.GET("/healthz", app.HealthCheck)
+	router.GET("/api/healthz", app.HealthCheck)
 
 	// games
-	games := router.Group("/games")
+	games := router.Group("/api/games")
 	{
-		games.POST("/", app.GameHandler.CreateGame)
+		games.POST("/", app.GamesHandler.CreateGame)
+		games.POST("/:code/join", app.PlayersHandler.JoinGameHandler)
 	}
 
 	return router

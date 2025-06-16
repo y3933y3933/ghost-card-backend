@@ -20,11 +20,12 @@ type config struct {
 }
 
 type Application struct {
-	Logger      *slog.Logger
-	DBQueries   *database.Queries
-	DB          *pgxpool.Pool
-	Config      config
-	GameHandler *api.GamesHandler
+	Logger         *slog.Logger
+	DBQueries      *database.Queries
+	DB             *pgxpool.Pool
+	Config         config
+	GamesHandler   *api.GamesHandler
+	PlayersHandler *api.PlayersHandler
 }
 
 func NewApplication() (*Application, error) {
@@ -54,13 +55,15 @@ func NewApplication() (*Application, error) {
 
 	// handler
 	gamesHandler := api.NewGamesHandler(queries, logger)
+	playersHandler := api.NewPlayersHandler(queries, logger)
 
 	app := &Application{
-		Logger:      logger,
-		DB:          dbpool,
-		DBQueries:   queries,
-		Config:      cfg,
-		GameHandler: gamesHandler,
+		Logger:         logger,
+		DB:             dbpool,
+		DBQueries:      queries,
+		Config:         cfg,
+		GamesHandler:   gamesHandler,
+		PlayersHandler: playersHandler,
 	}
 
 	return app, nil

@@ -14,8 +14,8 @@ func InternalServerError(c *gin.Context, msg string) {
 	c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 }
 
-func NotFound(c *gin.Context) {
-	c.JSON(http.StatusNotFound, gin.H{"error": "the requested resource could not be found"})
+func NotFound(c *gin.Context, msg string) {
+	c.JSON(http.StatusNotFound, gin.H{"error": msg})
 
 }
 

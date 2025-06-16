@@ -22,3 +22,7 @@ WHERE id = $1;
 -- name: DeletePlayersByGame :exec
 DELETE FROM players
 WHERE game_id = $1;
+
+-- name: CountPlayersInGame :one 
+SELECT COUNT(*) FROM players 
+WHERE game_id = $1;

@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countPlayersInGame = `-- name: CountPlayersInGame :one
+SELECT COUNT(*) FROM players 
+WHERE game_id = $1
+`
+
+func (q *Queries) CountPlayersInGame(ctx context.Context, gameID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countPlayersInGame, gameID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPlayer = `-- name: CreatePlayer :one
 INSERT INTO players (
   game_id, nickname, is_host
