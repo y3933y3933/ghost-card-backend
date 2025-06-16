@@ -16,7 +16,7 @@ migrate/create:
 		echo "Error: MIGRATION_NAME is required."; \
 		exit 1; \
 	fi
-	goose -dir ./migrations -s create $(MIGRATION_NAME) sql
+	goose -dir ./sql/migrations -s create $(MIGRATION_NAME) sql
 
 .PHONY: migrate/up
 migrate/up:
@@ -24,4 +24,4 @@ migrate/up:
 		echo "Error: DB_URL is required."; \
 		exit 1; \
 	fi
-	goose -dir ./migrations postgres $(DB_URL) up 
+	goose -dir ./sql/migrations postgres $(DB_URL) up 
