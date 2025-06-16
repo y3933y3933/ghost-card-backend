@@ -4,7 +4,7 @@ MIGRATION_NAME =
 
 .PHONY: run
 run:
-	go run .
+	go run . -port=${PORT} -env=${ENV} -db-url=${DB_URL}
 
 .PHONY: start-db
 start-db:
