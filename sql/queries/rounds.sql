@@ -38,9 +38,12 @@ LIMIT 1;
 SELECT r.id AS round_id,
        q.content AS question,
        p.id AS player_id,
+       g.id AS game_id,
        p.nickname,
        r.is_joker,
-       r.status
+       r.status,
+       r.current_player_id AS current_player_id,
+       g.level AS level
 FROM rounds r
 JOIN games g ON g.id = r.game_id
 JOIN questions q ON q.id = r.question_id
@@ -48,3 +51,20 @@ JOIN players p ON p.id = r.current_player_id
 WHERE g.code = $1
 ORDER BY r.created_at DESC
 LIMIT 1;
+
+
+
+
+-- name: GetCurrentRoundByGameCodeAndStatus :one
+SELECT rounds.*, questions.content AS question_content
+FROM rounds
+JOIN games ON rounds.game_id = games.id
+JOIN questions ON questions.id = rounds.question_id
+WHERE games.code = $1 AND rounds.status = $2
+LIMIT 1;
+
+
+-- name: UpdateRoundAfterDraw :exec
+UPDATE rounds
+SET is_joker = $2, status = $3
+WHERE id = $1;
