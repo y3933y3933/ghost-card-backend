@@ -9,107 +9,21 @@ import (
 	"context"
 )
 
-const createQuestion = `-- name: CreateQuestion :one
-INSERT INTO questions (
-  level, content
-) VALUES (
-  $1, $2
-)
-RETURNING id, level, content, created_at, updated_at
-`
-
-type CreateQuestionParams struct {
-	Level   string
-	Content string
-}
-
-func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) (Question, error) {
-	row := q.db.QueryRow(ctx, createQuestion, arg.Level, arg.Content)
-	var i Question
-	err := row.Scan(
-		&i.ID,
-		&i.Level,
-		&i.Content,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getQuestionByID = `-- name: GetQuestionByID :one
-SELECT id, level, content, created_at, updated_at FROM questions
-WHERE id = $1
-`
-
-func (q *Queries) GetQuestionByID(ctx context.Context, id int64) (Question, error) {
-	row := q.db.QueryRow(ctx, getQuestionByID, id)
-	var i Question
-	err := row.Scan(
-		&i.ID,
-		&i.Level,
-		&i.Content,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getUnusedQuestion = `-- name: GetUnusedQuestion :one
-SELECT id, level, content, created_at, updated_at FROM questions
+const getRandomQuestionByLevel = `-- name: GetRandomQuestionByLevel :one
+SELECT id, content FROM questions
 WHERE level = $1
-  AND id NOT IN (
-    SELECT question_id FROM rounds WHERE game_id = $2
-  )
 ORDER BY RANDOM()
 LIMIT 1
 `
 
-type GetUnusedQuestionParams struct {
-	Level  string
-	GameID int64
+type GetRandomQuestionByLevelRow struct {
+	ID      int64
+	Content string
 }
 
-func (q *Queries) GetUnusedQuestion(ctx context.Context, arg GetUnusedQuestionParams) (Question, error) {
-	row := q.db.QueryRow(ctx, getUnusedQuestion, arg.Level, arg.GameID)
-	var i Question
-	err := row.Scan(
-		&i.ID,
-		&i.Level,
-		&i.Content,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+func (q *Queries) GetRandomQuestionByLevel(ctx context.Context, level string) (GetRandomQuestionByLevelRow, error) {
+	row := q.db.QueryRow(ctx, getRandomQuestionByLevel, level)
+	var i GetRandomQuestionByLevelRow
+	err := row.Scan(&i.ID, &i.Content)
 	return i, err
-}
-
-const listQuestionsByLevel = `-- name: ListQuestionsByLevel :many
-SELECT id, level, content, created_at, updated_at FROM questions
-WHERE level = $1
-ORDER BY id
-`
-
-func (q *Queries) ListQuestionsByLevel(ctx context.Context, level string) ([]Question, error) {
-	rows, err := q.db.Query(ctx, listQuestionsByLevel, level)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Question
-	for rows.Next() {
-		var i Question
-		if err := rows.Scan(
-			&i.ID,
-			&i.Level,
-			&i.Content,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

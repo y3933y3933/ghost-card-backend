@@ -7,17 +7,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/y3933y3933/ghost-card/internal/database"
+	"github.com/y3933y3933/ghost-card/internal/ws"
 )
 
 type RoundsHandler struct {
 	logger  *slog.Logger
 	queries *database.Queries
+	hub     *ws.Hub
 }
 
-func NewRoundsHandler(queries *database.Queries, logger *slog.Logger) *RoundsHandler {
+func NewRoundsHandler(queries *database.Queries, logger *slog.Logger, hub *ws.Hub) *RoundsHandler {
 	return &RoundsHandler{
 		logger:  logger,
 		queries: queries,
+		hub:     hub,
 	}
 }
 
@@ -58,6 +61,71 @@ func (h *RoundsHandler) GetCurrentRound(c *gin.Context) {
 		Status:          round.Status,
 		Level:           round.Level,
 		CurrentPlayerID: round.CurrentPlayerID,
+	})
+
+}
+
+type CreateRoundRequest struct {
+	PlayerID int64 `json:"player_id" binding:"required"`
+}
+
+type CreateRoundResponse struct {
+	RoundID  int64  `json:"round_id"`
+	PlayerID int64  `json:"player_id"`
+	Question string `json:"question"`
+}
+
+func (h *RoundsHandler) CreateRound(c *gin.Context) {
+	ctx := c.Request.Context()
+	code := c.Param("code")
+
+	var req CreateRoundRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, "invalid player_id")
+		return
+	}
+
+	game, err := h.queries.GetGameByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+		} else {
+			InternalServerError(c, "db error")
+		}
+		return
+	}
+
+	question, err := h.queries.GetRandomQuestionByLevel(ctx, game.Level)
+	if err != nil {
+		InternalServerError(c, "failed to pick question")
+		return
+	}
+
+	round, err := h.queries.CreateRound(ctx, database.CreateRoundParams{
+		GameID:          game.ID,
+		QuestionID:      question.ID,
+		CurrentPlayerID: req.PlayerID,
+	})
+	if err != nil {
+		InternalServerError(c, "failed to create round")
+		return
+	}
+
+	// ✅ WebSocket 廣播
+	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
+		Type: "round_started",
+		Data: gin.H{
+			"round_id":  round.ID,
+			"player_id": round.CurrentPlayerID,
+			"question":  question.Content, // 前端可選擇只讓該 player 顯示
+		},
+	})
+
+	// ✅ 回傳給建立 round 的前端（主持人）
+	Success(c, CreateRoundResponse{
+		RoundID:  round.ID,
+		PlayerID: round.CurrentPlayerID,
+		Question: question.Content,
 	})
 
 }

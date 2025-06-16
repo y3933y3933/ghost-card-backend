@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createRound = `-- name: CreateRound :one
+INSERT INTO rounds (game_id, question_id, current_player_id, status)
+VALUES ($1, $2, $3, 'pending')
+RETURNING id, question_id, current_player_id, status, created_at
+`
+
+type CreateRoundParams struct {
+	GameID          int64
+	QuestionID      int64
+	CurrentPlayerID int64
+}
+
+type CreateRoundRow struct {
+	ID              int64
+	QuestionID      int64
+	CurrentPlayerID int64
+	Status          string
+	CreatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (CreateRoundRow, error) {
+	row := q.db.QueryRow(ctx, createRound, arg.GameID, arg.QuestionID, arg.CurrentPlayerID)
+	var i CreateRoundRow
+	err := row.Scan(
+		&i.ID,
+		&i.QuestionID,
+		&i.CurrentPlayerID,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCurrentRoundByGameCode = `-- name: GetCurrentRoundByGameCode :one
 SELECT r.id, r.current_player_id, r.question_id, r.is_joker, r.created_at, g.id AS game_id,
        r.status, g.level,
