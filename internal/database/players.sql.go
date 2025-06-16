@@ -11,102 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countPlayersInGame = `-- name: CountPlayersInGame :one
-SELECT COUNT(*) FROM players 
-WHERE game_id = $1
+const listPlayersByGameCode = `-- name: ListPlayersByGameCode :many
+SELECT p.id, p.nickname, p.is_host, p.joined_at
+FROM players p
+JOIN games g ON p.game_id = g.id
+WHERE g.code = $1
+ORDER BY p.joined_at
 `
 
-func (q *Queries) CountPlayersInGame(ctx context.Context, gameID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, countPlayersInGame, gameID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const createPlayer = `-- name: CreatePlayer :one
-INSERT INTO players (
-  game_id, nickname, is_host
-) VALUES (
-  $1, $2, $3
-)
-RETURNING id, game_id, nickname, is_host, joined_at
-`
-
-type CreatePlayerParams struct {
-	GameID   int64
+type ListPlayersByGameCodeRow struct {
+	ID       int64
 	Nickname string
 	IsHost   pgtype.Bool
+	JoinedAt pgtype.Timestamptz
 }
 
-func (q *Queries) CreatePlayer(ctx context.Context, arg CreatePlayerParams) (Player, error) {
-	row := q.db.QueryRow(ctx, createPlayer, arg.GameID, arg.Nickname, arg.IsHost)
-	var i Player
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.Nickname,
-		&i.IsHost,
-		&i.JoinedAt,
-	)
-	return i, err
-}
-
-const deletePlayerByID = `-- name: DeletePlayerByID :exec
-DELETE FROM players
-WHERE id = $1
-`
-
-func (q *Queries) DeletePlayerByID(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deletePlayerByID, id)
-	return err
-}
-
-const deletePlayersByGame = `-- name: DeletePlayersByGame :exec
-DELETE FROM players
-WHERE game_id = $1
-`
-
-func (q *Queries) DeletePlayersByGame(ctx context.Context, gameID int64) error {
-	_, err := q.db.Exec(ctx, deletePlayersByGame, gameID)
-	return err
-}
-
-const getPlayerByID = `-- name: GetPlayerByID :one
-SELECT id, game_id, nickname, is_host, joined_at FROM players
-WHERE id = $1
-`
-
-func (q *Queries) GetPlayerByID(ctx context.Context, id int64) (Player, error) {
-	row := q.db.QueryRow(ctx, getPlayerByID, id)
-	var i Player
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.Nickname,
-		&i.IsHost,
-		&i.JoinedAt,
-	)
-	return i, err
-}
-
-const listPlayersByGame = `-- name: ListPlayersByGame :many
-SELECT id, game_id, nickname, is_host, joined_at FROM players
-WHERE game_id = $1
-ORDER BY joined_at ASC
-`
-
-func (q *Queries) ListPlayersByGame(ctx context.Context, gameID int64) ([]Player, error) {
-	rows, err := q.db.Query(ctx, listPlayersByGame, gameID)
+func (q *Queries) ListPlayersByGameCode(ctx context.Context, code string) ([]ListPlayersByGameCodeRow, error) {
+	rows, err := q.db.Query(ctx, listPlayersByGameCode, code)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Player
+	var items []ListPlayersByGameCodeRow
 	for rows.Next() {
-		var i Player
+		var i ListPlayersByGameCodeRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.GameID,
 			&i.Nickname,
 			&i.IsHost,
 			&i.JoinedAt,

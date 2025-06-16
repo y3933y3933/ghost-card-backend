@@ -14,11 +14,7 @@ func SetRoutes(app *app.Application) *gin.Engine {
 	games := router.Group("/api/games")
 	{
 		games.POST("/", app.GamesHandler.CreateGame)
-		games.POST("/:code/join", app.PlayersHandler.JoinGameHandler)
-		games.GET("/:code", app.GamesHandler.GetGameByCode)
-		games.POST("/:code/rounds", app.RoundsHandler.CreateRoundInOrder)
-		games.POST("/:code/draws", app.RoundsHandler.DrawCard)
-		games.GET("/:code/rounds/current", app.RoundsHandler.GetCurrentRound)
+		games.GET("/:code/players", app.PlayersHandler.ListPlayers)
 
 	}
 

@@ -11,250 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createRound = `-- name: CreateRound :one
-INSERT INTO rounds (
-  game_id, question_id, current_player_id, is_joker, status
-) VALUES (
-  $1, $2, $3, $4, $5
-)
-RETURNING id, game_id, question_id, current_player_id, is_joker, status, created_at
-`
-
-type CreateRoundParams struct {
-	GameID          int64
-	QuestionID      int64
-	CurrentPlayerID int64
-	IsJoker         pgtype.Bool
-	Status          string
-}
-
-func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (Round, error) {
-	row := q.db.QueryRow(ctx, createRound,
-		arg.GameID,
-		arg.QuestionID,
-		arg.CurrentPlayerID,
-		arg.IsJoker,
-		arg.Status,
-	)
-	var i Round
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.QuestionID,
-		&i.CurrentPlayerID,
-		&i.IsJoker,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const deleteRoundsByGame = `-- name: DeleteRoundsByGame :exec
-DELETE FROM rounds
-WHERE game_id = $1
-`
-
-func (q *Queries) DeleteRoundsByGame(ctx context.Context, gameID int64) error {
-	_, err := q.db.Exec(ctx, deleteRoundsByGame, gameID)
-	return err
-}
-
 const getCurrentRoundByGameCode = `-- name: GetCurrentRoundByGameCode :one
-SELECT r.id AS round_id,
-       q.content AS question,
-       p.id AS player_id,
-       g.id AS game_id,
-       p.nickname,
-       r.is_joker,
-       r.status,
-       r.current_player_id AS current_player_id,
-       g.level AS level
+SELECT r.id, r.current_player_id, r.question_id, r.is_joker, r.created_at, g.id AS game_id,
+       r.status, g.level,
+       q.content AS question_content
 FROM rounds r
-JOIN games g ON g.id = r.game_id
-JOIN questions q ON q.id = r.question_id
-JOIN players p ON p.id = r.current_player_id
+JOIN games g ON r.game_id = g.id
+JOIN questions q ON r.question_id = q.id
 WHERE g.code = $1
 ORDER BY r.created_at DESC
 LIMIT 1
 `
 
 type GetCurrentRoundByGameCodeRow struct {
-	RoundID         int64
-	Question        string
-	PlayerID        int64
-	GameID          int64
-	Nickname        string
-	IsJoker         pgtype.Bool
-	Status          string
+	ID              int64
 	CurrentPlayerID int64
+	QuestionID      int64
+	IsJoker         pgtype.Bool
+	CreatedAt       pgtype.Timestamptz
+	GameID          int64
+	Status          string
 	Level           string
+	QuestionContent string
 }
 
 func (q *Queries) GetCurrentRoundByGameCode(ctx context.Context, code string) (GetCurrentRoundByGameCodeRow, error) {
 	row := q.db.QueryRow(ctx, getCurrentRoundByGameCode, code)
 	var i GetCurrentRoundByGameCodeRow
 	err := row.Scan(
-		&i.RoundID,
-		&i.Question,
-		&i.PlayerID,
-		&i.GameID,
-		&i.Nickname,
-		&i.IsJoker,
-		&i.Status,
-		&i.CurrentPlayerID,
-		&i.Level,
-	)
-	return i, err
-}
-
-const getCurrentRoundByGameCodeAndStatus = `-- name: GetCurrentRoundByGameCodeAndStatus :one
-SELECT rounds.id, rounds.game_id, rounds.question_id, rounds.current_player_id, rounds.is_joker, rounds.status, rounds.created_at, questions.content AS question_content
-FROM rounds
-JOIN games ON rounds.game_id = games.id
-JOIN questions ON questions.id = rounds.question_id
-WHERE games.code = $1 AND rounds.status = $2
-LIMIT 1
-`
-
-type GetCurrentRoundByGameCodeAndStatusParams struct {
-	Code   string
-	Status string
-}
-
-type GetCurrentRoundByGameCodeAndStatusRow struct {
-	ID              int64
-	GameID          int64
-	QuestionID      int64
-	CurrentPlayerID int64
-	IsJoker         pgtype.Bool
-	Status          string
-	CreatedAt       pgtype.Timestamptz
-	QuestionContent string
-}
-
-func (q *Queries) GetCurrentRoundByGameCodeAndStatus(ctx context.Context, arg GetCurrentRoundByGameCodeAndStatusParams) (GetCurrentRoundByGameCodeAndStatusRow, error) {
-	row := q.db.QueryRow(ctx, getCurrentRoundByGameCodeAndStatus, arg.Code, arg.Status)
-	var i GetCurrentRoundByGameCodeAndStatusRow
-	err := row.Scan(
 		&i.ID,
-		&i.GameID,
-		&i.QuestionID,
 		&i.CurrentPlayerID,
+		&i.QuestionID,
 		&i.IsJoker,
-		&i.Status,
 		&i.CreatedAt,
+		&i.GameID,
+		&i.Status,
+		&i.Level,
 		&i.QuestionContent,
 	)
 	return i, err
-}
-
-const getLatestRoundByGameID = `-- name: GetLatestRoundByGameID :one
-SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at
-FROM rounds
-WHERE game_id = $1
-ORDER BY created_at DESC
-LIMIT 1
-`
-
-func (q *Queries) GetLatestRoundByGameID(ctx context.Context, gameID int64) (Round, error) {
-	row := q.db.QueryRow(ctx, getLatestRoundByGameID, gameID)
-	var i Round
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.QuestionID,
-		&i.CurrentPlayerID,
-		&i.IsJoker,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getRoundByID = `-- name: GetRoundByID :one
-SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at FROM rounds
-WHERE id = $1
-`
-
-func (q *Queries) GetRoundByID(ctx context.Context, id int64) (Round, error) {
-	row := q.db.QueryRow(ctx, getRoundByID, id)
-	var i Round
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.QuestionID,
-		&i.CurrentPlayerID,
-		&i.IsJoker,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const listRoundsByGame = `-- name: ListRoundsByGame :many
-SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at FROM rounds
-WHERE game_id = $1
-ORDER BY created_at ASC
-`
-
-func (q *Queries) ListRoundsByGame(ctx context.Context, gameID int64) ([]Round, error) {
-	rows, err := q.db.Query(ctx, listRoundsByGame, gameID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Round
-	for rows.Next() {
-		var i Round
-		if err := rows.Scan(
-			&i.ID,
-			&i.GameID,
-			&i.QuestionID,
-			&i.CurrentPlayerID,
-			&i.IsJoker,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const revealRound = `-- name: RevealRound :exec
-UPDATE rounds
-SET is_joker = $2,
-    status = 'revealed'
-WHERE id = $1
-`
-
-type RevealRoundParams struct {
-	ID      int64
-	IsJoker pgtype.Bool
-}
-
-func (q *Queries) RevealRound(ctx context.Context, arg RevealRoundParams) error {
-	_, err := q.db.Exec(ctx, revealRound, arg.ID, arg.IsJoker)
-	return err
-}
-
-const updateRoundAfterDraw = `-- name: UpdateRoundAfterDraw :exec
-UPDATE rounds
-SET is_joker = $2, status = $3
-WHERE id = $1
-`
-
-type UpdateRoundAfterDrawParams struct {
-	ID      int64
-	IsJoker pgtype.Bool
-	Status  string
-}
-
-func (q *Queries) UpdateRoundAfterDraw(ctx context.Context, arg UpdateRoundAfterDrawParams) error {
-	_, err := q.db.Exec(ctx, updateRoundAfterDraw, arg.ID, arg.IsJoker, arg.Status)
-	return err
 }

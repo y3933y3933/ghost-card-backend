@@ -27,3 +27,10 @@ func Forbidden(c *gin.Context, msg string) {
 	c.JSON(http.StatusForbidden, gin.H{"error": msg})
 
 }
+
+func Success(c *gin.Context, data any) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+		"data":    data,
+	})
+}

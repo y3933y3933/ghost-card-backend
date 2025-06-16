@@ -35,16 +35,6 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, e
 	return i, err
 }
 
-const deleteGame = `-- name: DeleteGame :exec
-DELETE FROM games
-WHERE id = $1
-`
-
-func (q *Queries) DeleteGame(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteGame, id)
-	return err
-}
-
 const getGameByCode = `-- name: GetGameByCode :one
 SELECT id, code, level, status, created_at, updated_at FROM games
 WHERE code = $1
@@ -62,72 +52,4 @@ func (q *Queries) GetGameByCode(ctx context.Context, code string) (Game, error) 
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const getGameByID = `-- name: GetGameByID :one
-SELECT id, code, level, status, created_at, updated_at FROM games
-WHERE id = $1
-`
-
-func (q *Queries) GetGameByID(ctx context.Context, id int64) (Game, error) {
-	row := q.db.QueryRow(ctx, getGameByID, id)
-	var i Game
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.Level,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const listGames = `-- name: ListGames :many
-SELECT id, code, level, status, created_at, updated_at FROM games
-ORDER BY created_at DESC
-`
-
-func (q *Queries) ListGames(ctx context.Context) ([]Game, error) {
-	rows, err := q.db.Query(ctx, listGames)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Game
-	for rows.Next() {
-		var i Game
-		if err := rows.Scan(
-			&i.ID,
-			&i.Code,
-			&i.Level,
-			&i.Status,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updateGameStatus = `-- name: UpdateGameStatus :exec
-UPDATE games
-SET status = $2,
-    updated_at = NOW()
-WHERE id = $1
-`
-
-type UpdateGameStatusParams struct {
-	ID     int64
-	Status string
-}
-
-func (q *Queries) UpdateGameStatus(ctx context.Context, arg UpdateGameStatusParams) error {
-	_, err := q.db.Exec(ctx, updateGameStatus, arg.ID, arg.Status)
-	return err
 }

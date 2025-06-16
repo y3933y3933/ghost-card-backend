@@ -1,10 +1,9 @@
 package api
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,27 +37,15 @@ type CreateGameResponse struct {
 
 func (h *GamesHandler) CreateGame(c *gin.Context) {
 	var req CreateGameRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			FailedValidation(c, ve.Error())
-		} else {
-			BadRequest(c, "Invalid request format")
-		}
+	if err := bindCreateGameRequest(c, &req); err != nil {
 		return
 	}
 
 	ctx := c.Request.Context()
 
-	code, err := utils.GenerateUniqueGameCode(ctx, h.queries, 6, 5)
-
+	code, err := generateGameCode(ctx, h)
 	if err != nil {
-		h.logger.Error("generate unique game code error: ", err)
-		if errors.Is(err, utils.ErrGenerateCode) {
-			InternalServerError(c, "code collision, try again")
-		} else {
-			InternalServerError(c, "DB error")
-		}
+		handleGameCodeError(c, h.logger, err)
 		return
 	}
 
@@ -67,75 +54,43 @@ func (h *GamesHandler) CreateGame(c *gin.Context) {
 		Level:  req.Level,
 		Status: "waiting",
 	})
-
 	if err != nil {
 		h.logger.Error("create game fail: ", err)
 		InternalServerError(c, "failed to create game")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"game": CreateGameResponse{
-			ID:        game.ID,
-			Code:      game.Code,
-			Level:     game.Level,
-			CreatedAt: game.CreatedAt.Time,
-		},
+	Success(c, CreateGameResponse{
+		ID:        game.ID,
+		Code:      game.Code,
+		Level:     game.Level,
+		CreatedAt: game.CreatedAt.Time,
 	})
+
 }
 
-type PlayerResponse struct {
-	ID       int64  `json:"id"`
-	Nickname string `json:"nickname"`
-	IsHost   bool   `json:"is_host"`
+func generateGameCode(ctx context.Context, h *GamesHandler) (string, error) {
+	return utils.GenerateUniqueGameCode(ctx, h.queries, 6, 5)
 }
 
-type GameResponse struct {
-	ID      int64            `json:"id"`
-	Code    string           `json:"code"`
-	Level   string           `json:"level"`
-	Status  string           `json:"status"`
-	Players []PlayerResponse `json:"players"`
-}
-
-func (h *GamesHandler) GetGameByCode(c *gin.Context) {
-	code := c.Param("code")
-	ctx := c.Request.Context()
-
-	game, err := h.queries.GetGameByCode(ctx, code)
-	if err != nil {
-		h.logger.Error("get game by code error: ", err)
-		if errors.Is(err, sql.ErrNoRows) {
-			NotFound(c, "game not found")
+func bindCreateGameRequest(c *gin.Context, req *CreateGameRequest) error {
+	if err := c.ShouldBindJSON(req); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			FailedValidation(c, ve.Error())
 		} else {
-			InternalServerError(c, "DB error")
+			BadRequest(c, "Invalid request format")
 		}
-		return
+		return err
 	}
+	return nil
+}
 
-	players, err := h.queries.ListPlayersByGame(ctx, game.ID)
-	if err != nil {
-		h.logger.Error("failed to get players: ", err)
-		InternalServerError(c, "failed to get players")
-		return
+func handleGameCodeError(c *gin.Context, logger *slog.Logger, err error) {
+	logger.Error("generate unique game code error: ", err)
+	if errors.Is(err, utils.ErrGenerateCode) {
+		InternalServerError(c, "code collision, try again")
+	} else {
+		InternalServerError(c, "DB error")
 	}
-
-	var playerResponses []PlayerResponse
-	for _, p := range players {
-		playerResponses = append(playerResponses, PlayerResponse{
-			ID:       p.ID,
-			Nickname: p.Nickname,
-			IsHost:   p.IsHost.Bool,
-		})
-	}
-
-	resp := GameResponse{
-		ID:      game.ID,
-		Code:    game.Code,
-		Level:   game.Level,
-		Status:  game.Status,
-		Players: playerResponses,
-	}
-
-	c.JSON(http.StatusOK, resp)
 }
