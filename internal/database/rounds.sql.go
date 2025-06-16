@@ -84,3 +84,37 @@ func (q *Queries) GetCurrentRoundByGameCode(ctx context.Context, code string) (G
 	)
 	return i, err
 }
+
+const getRoundByID = `-- name: GetRoundByID :one
+SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at FROM rounds WHERE id = $1
+`
+
+func (q *Queries) GetRoundByID(ctx context.Context, id int64) (Round, error) {
+	row := q.db.QueryRow(ctx, getRoundByID, id)
+	var i Round
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.QuestionID,
+		&i.CurrentPlayerID,
+		&i.IsJoker,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateRoundStatus = `-- name: UpdateRoundStatus :exec
+UPDATE rounds SET is_joker = $2, status = $3 WHERE id = $1
+`
+
+type UpdateRoundStatusParams struct {
+	ID      int64
+	IsJoker pgtype.Bool
+	Status  string
+}
+
+func (q *Queries) UpdateRoundStatus(ctx context.Context, arg UpdateRoundStatusParams) error {
+	_, err := q.db.Exec(ctx, updateRoundStatus, arg.ID, arg.IsJoker, arg.Status)
+	return err
+}

@@ -16,3 +16,11 @@ LIMIT 1;
 INSERT INTO rounds (game_id, question_id, current_player_id, status)
 VALUES ($1, $2, $3, 'pending')
 RETURNING id, question_id, current_player_id, status, created_at;
+
+
+-- name: GetRoundByID :one
+SELECT * FROM rounds WHERE id = $1;
+
+
+-- name: UpdateRoundStatus :exec
+UPDATE rounds SET is_joker = $2, status = $3 WHERE id = $1;

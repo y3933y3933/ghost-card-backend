@@ -4,9 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"net/http"
+
+	"math/rand"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/y3933y3933/ghost-card/internal/database"
+	"github.com/y3933y3933/ghost-card/internal/utils"
 	"github.com/y3933y3933/ghost-card/internal/ws"
 )
 
@@ -136,4 +141,88 @@ func (h *RoundsHandler) CreateRound(c *gin.Context) {
 		Question: question.Content,
 	})
 
+}
+
+func (h *RoundsHandler) DrawCard(c *gin.Context) {
+	ctx := c.Request.Context()
+	gameCode := c.Param("code")
+
+	roundIDParam := c.Param("id")
+	roundID, err := utils.ParseID(roundIDParam)
+
+	if err != nil {
+		BadRequest(c, "invalid round id")
+		return
+	}
+
+	game, err := h.queries.GetGameByCode(ctx, gameCode)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+			return
+		}
+		InternalServerError(c, "db error")
+		return
+	}
+
+	round, err := h.queries.GetRoundByID(ctx, roundID)
+	if err != nil {
+		InternalServerError(c, "round not found")
+		return
+	}
+
+	if round.Status != "pending" {
+		BadRequest(c, "round already completed")
+		return
+	}
+
+	// 🎲 抽鬼牌（1/3 機率）
+	isJoker := rand.Intn(3) == 0
+
+	newStatus := "done"
+	if isJoker {
+		newStatus = "revealed"
+	}
+
+	err = h.queries.UpdateRoundStatus(ctx, database.UpdateRoundStatusParams{
+		ID: round.ID,
+		IsJoker: pgtype.Bool{
+			Bool:  isJoker,
+			Valid: true,
+		},
+		Status: newStatus,
+	})
+	if err != nil {
+		InternalServerError(c, "failed to update round")
+		return
+	}
+
+	question, err := h.queries.GetQuestionByID(ctx, round.QuestionID)
+	if err != nil {
+		InternalServerError(c, "failed to get question")
+		return
+	}
+
+	if isJoker {
+		// 👻 廣播給所有人：顯示題目
+		h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
+			Type: "joker_revealed",
+			Data: gin.H{
+				"round_id":  round.ID,
+				"player_id": round.CurrentPlayerID,
+				"question":  question,
+			},
+		})
+	} else {
+		// 🛡 廣播回合結束（安全）
+		h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
+			Type: "player_safe",
+			Data: gin.H{
+				"round_id":  round.ID,
+				"player_id": round.CurrentPlayerID,
+			},
+		})
+	}
+
+	c.Status(http.StatusOK)
 }

@@ -19,6 +19,7 @@ func SetRoutes(app *app.Application) *gin.Engine {
 		games.GET("/:code/rounds/current", app.RoundsHandler.GetCurrentRound)
 		games.POST("/:code/join", app.PlayersHandler.JoinGame)
 		games.POST("/:code/rounds", app.RoundsHandler.CreateRound)
+		games.POST("/:code/rounds/:id/draw", app.RoundsHandler.DrawCard)
 
 	}
 

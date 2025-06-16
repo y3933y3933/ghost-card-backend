@@ -9,6 +9,18 @@ import (
 	"context"
 )
 
+const getQuestionByID = `-- name: GetQuestionByID :one
+SELECT content FROM questions
+WHERE id = $1
+`
+
+func (q *Queries) GetQuestionByID(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, getQuestionByID, id)
+	var content string
+	err := row.Scan(&content)
+	return content, err
+}
+
 const getRandomQuestionByLevel = `-- name: GetRandomQuestionByLevel :one
 SELECT id, content FROM questions
 WHERE level = $1
