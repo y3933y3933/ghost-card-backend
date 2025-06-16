@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/y3933y3933/ghost-card/internal/app"
+	"github.com/y3933y3933/ghost-card/internal/ws"
 )
 
 func SetRoutes(app *app.Application) *gin.Engine {
@@ -21,6 +22,9 @@ func SetRoutes(app *app.Application) *gin.Engine {
 		games.GET("/:code/rounds/current", app.RoundsHandler.GetCurrentRound)
 
 	}
+
+	// ws
+	router.GET("/ws", ws.ServeWS)
 
 	return router
 }
