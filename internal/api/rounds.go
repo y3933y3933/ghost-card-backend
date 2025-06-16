@@ -302,3 +302,37 @@ func (h *RoundsHandler) CreateNextRound(c *gin.Context) {
 		"player_id": nextPlayerID,
 	})
 }
+
+func (h *RoundsHandler) EndGame(c *gin.Context) {
+	ctx := c.Request.Context()
+	gameCode := c.Param("code")
+
+	game, err := h.queries.GetGameByCode(ctx, gameCode)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+			return
+		}
+		InternalServerError(c, "db error")
+		return
+	}
+
+	err = h.queries.UpdateGameStatus(ctx, database.UpdateGameStatusParams{
+		ID:     game.ID,
+		Status: "ended",
+	})
+	if err != nil {
+		InternalServerError(c, "failed to end game")
+		return
+	}
+
+	// 廣播遊戲結束
+	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
+		Type: "game_ended",
+		Data: gin.H{
+			"game_id": game.ID,
+		},
+	})
+
+	c.Status(http.StatusOK)
+}
