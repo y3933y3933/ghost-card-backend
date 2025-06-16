@@ -28,3 +28,11 @@ WHERE id = $1;
 -- name: DeleteRoundsByGame :exec
 DELETE FROM rounds
 WHERE game_id = $1;
+
+
+-- name: GetLatestRoundByGameID :one
+SELECT *
+FROM rounds
+WHERE game_id = $1
+ORDER BY created_at DESC
+LIMIT 1;

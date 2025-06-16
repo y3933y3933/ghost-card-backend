@@ -36,16 +36,6 @@ func (q *Queries) CreateQuestion(ctx context.Context, arg CreateQuestionParams) 
 	return i, err
 }
 
-const deleteQuestion = `-- name: DeleteQuestion :exec
-DELETE FROM questions
-WHERE id = $1
-`
-
-func (q *Queries) DeleteQuestion(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteQuestion, id)
-	return err
-}
-
 const getQuestionByID = `-- name: GetQuestionByID :one
 SELECT id, level, content, created_at, updated_at FROM questions
 WHERE id = $1
@@ -64,16 +54,23 @@ func (q *Queries) GetQuestionByID(ctx context.Context, id int64) (Question, erro
 	return i, err
 }
 
-const getRandomQuestionByLevel = `-- name: GetRandomQuestionByLevel :one
-SELECT id, level, content, created_at, updated_at
-FROM questions
+const getUnusedQuestion = `-- name: GetUnusedQuestion :one
+SELECT id, level, content, created_at, updated_at FROM questions
 WHERE level = $1
+  AND id NOT IN (
+    SELECT question_id FROM rounds WHERE game_id = $2
+  )
 ORDER BY RANDOM()
 LIMIT 1
 `
 
-func (q *Queries) GetRandomQuestionByLevel(ctx context.Context, level string) (Question, error) {
-	row := q.db.QueryRow(ctx, getRandomQuestionByLevel, level)
+type GetUnusedQuestionParams struct {
+	Level  string
+	GameID int64
+}
+
+func (q *Queries) GetUnusedQuestion(ctx context.Context, arg GetUnusedQuestionParams) (Question, error) {
+	row := q.db.QueryRow(ctx, getUnusedQuestion, arg.Level, arg.GameID)
 	var i Question
 	err := row.Scan(
 		&i.ID,
@@ -85,41 +82,10 @@ func (q *Queries) GetRandomQuestionByLevel(ctx context.Context, level string) (Q
 	return i, err
 }
 
-const listQuestions = `-- name: ListQuestions :many
-SELECT id, level, content, created_at, updated_at FROM questions
-ORDER BY created_at DESC
-`
-
-func (q *Queries) ListQuestions(ctx context.Context) ([]Question, error) {
-	rows, err := q.db.Query(ctx, listQuestions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Question
-	for rows.Next() {
-		var i Question
-		if err := rows.Scan(
-			&i.ID,
-			&i.Level,
-			&i.Content,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listQuestionsByLevel = `-- name: ListQuestionsByLevel :many
 SELECT id, level, content, created_at, updated_at FROM questions
 WHERE level = $1
-ORDER BY created_at DESC
+ORDER BY id
 `
 
 func (q *Queries) ListQuestionsByLevel(ctx context.Context, level string) ([]Question, error) {
@@ -146,23 +112,4 @@ func (q *Queries) ListQuestionsByLevel(ctx context.Context, level string) ([]Que
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateQuestion = `-- name: UpdateQuestion :exec
-UPDATE questions
-SET content = $2,
-    level = $3,
-    updated_at = NOW()
-WHERE id = $1
-`
-
-type UpdateQuestionParams struct {
-	ID      int64
-	Content string
-	Level   string
-}
-
-func (q *Queries) UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) error {
-	_, err := q.db.Exec(ctx, updateQuestion, arg.ID, arg.Content, arg.Level)
-	return err
 }

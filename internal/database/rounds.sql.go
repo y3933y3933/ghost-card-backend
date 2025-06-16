@@ -59,6 +59,29 @@ func (q *Queries) DeleteRoundsByGame(ctx context.Context, gameID int64) error {
 	return err
 }
 
+const getLatestRoundByGameID = `-- name: GetLatestRoundByGameID :one
+SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at
+FROM rounds
+WHERE game_id = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestRoundByGameID(ctx context.Context, gameID int64) (Round, error) {
+	row := q.db.QueryRow(ctx, getLatestRoundByGameID, gameID)
+	var i Round
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.QuestionID,
+		&i.CurrentPlayerID,
+		&i.IsJoker,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getRoundByID = `-- name: GetRoundByID :one
 SELECT id, game_id, question_id, current_player_id, is_joker, status, created_at FROM rounds
 WHERE id = $1

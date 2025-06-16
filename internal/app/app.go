@@ -26,6 +26,7 @@ type Application struct {
 	Config         config
 	GamesHandler   *api.GamesHandler
 	PlayersHandler *api.PlayersHandler
+	RoundsHandler  *api.RoundsHandler
 }
 
 func NewApplication() (*Application, error) {
@@ -56,6 +57,7 @@ func NewApplication() (*Application, error) {
 	// handler
 	gamesHandler := api.NewGamesHandler(queries, logger)
 	playersHandler := api.NewPlayersHandler(queries, logger)
+	roundsHandler := api.NewRoundsHandler(queries, logger)
 
 	app := &Application{
 		Logger:         logger,
@@ -64,6 +66,7 @@ func NewApplication() (*Application, error) {
 		Config:         cfg,
 		GamesHandler:   gamesHandler,
 		PlayersHandler: playersHandler,
+		RoundsHandler:  roundsHandler,
 	}
 
 	return app, nil
