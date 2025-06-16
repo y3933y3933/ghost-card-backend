@@ -157,3 +157,29 @@ func (h *RoundsHandler) DrawCard(c *gin.Context) {
 	})
 
 }
+
+func (h *RoundsHandler) GetCurrentRound(c *gin.Context) {
+	ctx := c.Request.Context()
+	code := c.Param("code")
+
+	round, err := h.queries.GetCurrentRoundByGameCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "no round found")
+		} else {
+			InternalServerError(c, "failed to fetch round")
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"round_id": round.RoundID,
+		"question": round.Question,
+		"current_player": gin.H{
+			"id":       round.PlayerID,
+			"nickname": round.Nickname,
+		},
+		"is_joker": round.IsJoker,
+		"status":   round.Status,
+	})
+}
