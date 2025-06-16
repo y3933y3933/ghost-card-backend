@@ -24,7 +24,7 @@ func SetRoutes(app *app.Application) *gin.Engine {
 	}
 
 	// ws
-	router.GET("/ws", ws.ServeWS)
+	router.GET("/games/:code/ws/:player_id", ws.ServeWS(app.Hub))
 
 	return router
 }
