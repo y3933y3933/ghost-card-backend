@@ -61,7 +61,7 @@ func NewApplication() (*Application, error) {
 
 	// handler
 	gamesHandler := api.NewGamesHandler(queries, logger)
-	playersHandler := api.NewPlayersHandler(queries, logger)
+	playersHandler := api.NewPlayersHandler(queries, logger, hub)
 	roundsHandler := api.NewRoundsHandler(queries, logger)
 
 	app := &Application{

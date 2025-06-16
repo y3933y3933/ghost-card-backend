@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countPlayersInGame = `-- name: CountPlayersInGame :one
+SELECT COUNT(*) FROM players WHERE game_id = $1
+`
+
+func (q *Queries) CountPlayersInGame(ctx context.Context, gameID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countPlayersInGame, gameID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createPlayer = `-- name: CreatePlayer :one
+INSERT INTO players(game_id, nickname, is_host)
+VALUES ($1, $2, $3)
+RETURNING id, nickname, is_host, joined_at
+`
+
+type CreatePlayerParams struct {
+	GameID   int64
+	Nickname string
+	IsHost   pgtype.Bool
+}
+
+type CreatePlayerRow struct {
+	ID       int64
+	Nickname string
+	IsHost   pgtype.Bool
+	JoinedAt pgtype.Timestamptz
+}
+
+func (q *Queries) CreatePlayer(ctx context.Context, arg CreatePlayerParams) (CreatePlayerRow, error) {
+	row := q.db.QueryRow(ctx, createPlayer, arg.GameID, arg.Nickname, arg.IsHost)
+	var i CreatePlayerRow
+	err := row.Scan(
+		&i.ID,
+		&i.Nickname,
+		&i.IsHost,
+		&i.JoinedAt,
+	)
+	return i, err
+}
+
 const listPlayersByGameCode = `-- name: ListPlayersByGameCode :many
 SELECT p.id, p.nickname, p.is_host, p.joined_at
 FROM players p
