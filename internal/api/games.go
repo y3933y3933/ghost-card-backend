@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -81,4 +82,60 @@ func (h *GamesHandler) CreateGame(c *gin.Context) {
 			CreatedAt: game.CreatedAt.Time,
 		},
 	})
+}
+
+type PlayerResponse struct {
+	ID       int64  `json:"id"`
+	Nickname string `json:"nickname"`
+	IsHost   bool   `json:"is_host"`
+}
+
+type GameResponse struct {
+	ID      int64            `json:"id"`
+	Code    string           `json:"code"`
+	Level   string           `json:"level"`
+	Status  string           `json:"status"`
+	Players []PlayerResponse `json:"players"`
+}
+
+func (h *GamesHandler) GetGameByCode(c *gin.Context) {
+	code := c.Param("code")
+	ctx := c.Request.Context()
+
+	game, err := h.queries.GetGameByCode(ctx, code)
+	if err != nil {
+		h.logger.Error("get game by code error: ", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+		} else {
+			InternalServerError(c, "DB error")
+		}
+		return
+	}
+
+	players, err := h.queries.ListPlayersByGame(ctx, game.ID)
+	if err != nil {
+		h.logger.Error("failed to get players: ", err)
+		InternalServerError(c, "failed to get players")
+		return
+	}
+
+	var playerResponses []PlayerResponse
+	for _, p := range players {
+		playerResponses = append(playerResponses, PlayerResponse{
+			ID:       p.ID,
+			Nickname: p.Nickname,
+			IsHost:   p.IsHost.Bool,
+		})
+	}
+
+	resp := GameResponse{
+		ID:      game.ID,
+		Code:    game.Code,
+		Level:   game.Level,
+		Status:  game.Status,
+		Players: playerResponses,
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
