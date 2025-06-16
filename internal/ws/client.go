@@ -8,6 +8,7 @@ type Client struct {
 	Conn     *websocket.Conn
 	Send     chan []byte
 	GameCode string
+	PlayerID int64
 	Hub      *Hub
 }
 

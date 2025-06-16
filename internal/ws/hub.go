@@ -1,3 +1,4 @@
+// ws/hub.go
 package ws
 
 import (
@@ -25,6 +26,7 @@ type WebSocketMessage struct {
 
 func NewHub() *Hub {
 	return &Hub{
+		mu:         sync.RWMutex{},
 		rooms:      make(map[string]map[*Client]bool),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
@@ -75,5 +77,24 @@ func (h *Hub) BroadcastToGame(code string, msg WebSocketMessage) {
 	h.Broadcast <- MessageWithRoom{
 		GameCode: code,
 		Message:  msg,
+	}
+}
+
+func (h *Hub) SendToPlayer(code string, targetPlayerID int64, msg WebSocketMessage) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	clients := h.rooms[code]
+	payload, _ := json.Marshal(msg)
+
+	for client := range clients {
+		if client.PlayerID == targetPlayerID {
+			select {
+			case client.Send <- payload:
+			default:
+				close(client.Send)
+				delete(clients, client)
+			}
+		}
 	}
 }

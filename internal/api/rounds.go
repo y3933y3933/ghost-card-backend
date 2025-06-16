@@ -112,12 +112,20 @@ func (h *RoundsHandler) CreateRound(c *gin.Context) {
 	}
 
 	// ✅ WebSocket 廣播
+	// 廣播誰是出題者（全體看到）
 	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
 		Type: "round_started",
 		Data: gin.H{
 			"round_id":  round.ID,
 			"player_id": round.CurrentPlayerID,
-			"question":  question.Content, // 前端可選擇只讓該 player 顯示
+		},
+	})
+
+	// 私訊題目給該玩家（只有他看到）
+	h.hub.SendToPlayer(game.Code, round.CurrentPlayerID, ws.WebSocketMessage{
+		Type: "round_question",
+		Data: gin.H{
+			"question": question.Content,
 		},
 	})
 
