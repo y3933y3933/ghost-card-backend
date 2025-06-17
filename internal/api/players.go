@@ -110,10 +110,9 @@ func (h *PlayersHandler) JoinGame(c *gin.Context) {
 	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
 		Type: "player_joined",
 		Data: gin.H{
-			"id":        player.ID,
-			"nickname":  player.Nickname,
-			"is_host":   player.IsHost,
-			"joined_at": player.JoinedAt,
+			"id":       player.ID,
+			"nickname": player.Nickname,
+			"isHost":   player.IsHost,
 		},
 	})
 
@@ -160,7 +159,7 @@ func (h *RoundsHandler) RemovePlayer(c *gin.Context) {
 	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
 		Type: "player_left",
 		Data: gin.H{
-			"player_id": playerID,
+			"id": playerID,
 		},
 	})
 
