@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/y3933y3933/joker/internal/database"
+	"github.com/y3933y3933/joker/internal/utils"
 	"github.com/y3933y3933/joker/internal/ws"
 )
 
@@ -122,4 +124,45 @@ func (h *PlayersHandler) JoinGame(c *gin.Context) {
 		IsHost:   player.IsHost.Bool,
 	})
 
+}
+
+func (h *RoundsHandler) RemovePlayer(c *gin.Context) {
+	ctx := c.Request.Context()
+	gameCode := c.Param("code")
+	playerIDParam := c.Param("player_id")
+
+	playerID, err := utils.ParseID(playerIDParam)
+	if err != nil {
+		BadRequest(c, "invalid player ID")
+		return
+	}
+
+	game, err := h.queries.GetGameByCode(ctx, gameCode)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			NotFound(c, "game not found")
+			return
+		}
+		InternalServerError(c, "db error")
+		return
+	}
+
+	err = h.queries.DeletePlayer(ctx, database.DeletePlayerParams{
+		ID:     playerID,
+		GameID: game.ID,
+	})
+	if err != nil {
+		InternalServerError(c, "failed to remove player")
+		return
+	}
+
+	// 廣播玩家離開
+	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
+		Type: "player_left",
+		Data: gin.H{
+			"player_id": playerID,
+		},
+	})
+
+	c.Status(http.StatusNoContent)
 }

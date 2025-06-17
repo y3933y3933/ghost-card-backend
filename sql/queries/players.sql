@@ -15,3 +15,6 @@ VALUES ($1, $2, $3)
 RETURNING id, nickname, is_host, joined_at;
 
 
+
+-- name: DeletePlayer :exec
+DELETE FROM players WHERE id = $1 AND game_id = $2;

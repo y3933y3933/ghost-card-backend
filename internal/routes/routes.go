@@ -22,6 +22,8 @@ func SetRoutes(app *app.Application) *gin.Engine {
 		games.POST("/:code/rounds/:id/draw", app.RoundsHandler.DrawCard)
 		games.POST("/:code/rounds/next", app.RoundsHandler.CreateNextRound)
 		games.POST("/:code/end", app.RoundsHandler.EndGame)
+		games.DELETE("/:code/players/:player_id", app.RoundsHandler.RemovePlayer)
+
 	}
 
 	// ws
