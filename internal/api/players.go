@@ -28,7 +28,7 @@ func NewPlayersHandler(queries *database.Queries, logger *slog.Logger, hub *ws.H
 type PlayerResponse struct {
 	ID       int64  `json:"id"`
 	Nickname string `json:"nickname"`
-	IsHost   bool   `json:"is_host"`
+	IsHost   bool   `json:"isHost"`
 }
 
 func (h *PlayersHandler) ListPlayers(c *gin.Context) {
