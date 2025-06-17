@@ -34,18 +34,25 @@ type CurrentPlayer struct {
 	Nickname string `json:"nickname"`
 }
 type CurrentRoundResponse struct {
-	RoundID         int64  `json:"round_id"`
-	Question        string `json:"question_content"`
-	GameID          int64  `json:"game_id"`
-	IsJoker         *bool  `json:"is_joker"`
+	RoundID         int64  `json:"roundId"`
+	Question        string `json:"question"`
+	GameID          int64  `json:"gameId"`
+	IsJoker         *bool  `json:"isJoker"`
 	Status          string `json:"status"`
-	Level           string `json:"level"`
-	CurrentPlayerID int64  `json:"current_player_id"`
+	CurrentPlayerID int64  `json:"currentPlayerId"`
 }
 
 func (h *RoundsHandler) GetCurrentRound(c *gin.Context) {
 	ctx := c.Request.Context()
 	gameCode := c.Param("code")
+
+	playerIDStr := c.Query("player_id")
+	playerID, err := utils.ParseID(playerIDStr)
+
+	if err != nil {
+		BadRequest(c, "invalid player id")
+		return
+	}
 
 	round, err := h.queries.GetCurrentRoundByGameCode(ctx, gameCode)
 	if err != nil {
@@ -58,26 +65,28 @@ func (h *RoundsHandler) GetCurrentRound(c *gin.Context) {
 		return
 	}
 
+	if round.CurrentPlayerID != playerID {
+		round.QuestionContent = ""
+	}
+
 	Success(c, CurrentRoundResponse{
 		RoundID:         round.ID,
-		Question:        round.QuestionContent,
 		GameID:          round.GameID,
+		CurrentPlayerID: round.CurrentPlayerID,
 		IsJoker:         &round.IsJoker.Bool,
 		Status:          round.Status,
-		Level:           round.Level,
-		CurrentPlayerID: round.CurrentPlayerID,
+		Question:        round.QuestionContent,
 	})
 
 }
 
 type CreateRoundRequest struct {
-	PlayerID int64 `json:"player_id" binding:"required"`
+	PlayerID int64 `json:"playerId" binding:"required"`
 }
 
 type CreateRoundResponse struct {
-	RoundID  int64  `json:"round_id"`
-	PlayerID int64  `json:"player_id"`
-	Question string `json:"question"`
+	RoundID  int64 `json:"roundId"`
+	PlayerID int64 `json:"playerId"`
 }
 
 func (h *RoundsHandler) CreateRound(c *gin.Context) {
@@ -119,10 +128,10 @@ func (h *RoundsHandler) CreateRound(c *gin.Context) {
 	// ✅ WebSocket 廣播
 	// 廣播誰是出題者（全體看到）
 	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
-		Type: "round_started",
+		Type: "game_started",
 		Data: gin.H{
-			"round_id":  round.ID,
-			"player_id": round.CurrentPlayerID,
+			"roundId":  round.ID,
+			"playerId": round.CurrentPlayerID,
 		},
 	})
 
@@ -138,7 +147,6 @@ func (h *RoundsHandler) CreateRound(c *gin.Context) {
 	Success(c, CreateRoundResponse{
 		RoundID:  round.ID,
 		PlayerID: round.CurrentPlayerID,
-		Question: question.Content,
 	})
 
 }
@@ -208,9 +216,9 @@ func (h *RoundsHandler) DrawCard(c *gin.Context) {
 		h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
 			Type: "joker_revealed",
 			Data: gin.H{
-				"round_id":  round.ID,
-				"player_id": round.CurrentPlayerID,
-				"question":  question,
+				"roundId":  round.ID,
+				"playerId": round.CurrentPlayerID,
+				"question": question,
 			},
 		})
 	} else {
@@ -218,8 +226,8 @@ func (h *RoundsHandler) DrawCard(c *gin.Context) {
 		h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
 			Type: "player_safe",
 			Data: gin.H{
-				"round_id":  round.ID,
-				"player_id": round.CurrentPlayerID,
+				"roundId":  round.ID,
+				"playerId": round.CurrentPlayerID,
 			},
 		})
 	}
@@ -284,8 +292,8 @@ func (h *RoundsHandler) CreateNextRound(c *gin.Context) {
 	h.hub.BroadcastToGame(game.Code, ws.WebSocketMessage{
 		Type: "round_started",
 		Data: gin.H{
-			"round_id":  round.ID,
-			"player_id": nextPlayerID,
+			"roundId":  round.ID,
+			"playerId": nextPlayerID,
 		},
 	})
 
